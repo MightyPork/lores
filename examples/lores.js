@@ -1,0 +1,1 @@
+/home/ondra/Dokumenty/git/lores/js/lores.js
