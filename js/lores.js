@@ -1074,7 +1074,7 @@ LoresDownloader.prototype.run = function(readyFn) {
 		
 		if(dl.done) continue;
 		
-		$.get(dl.url, self._makeDlHandler(dl, readyFn));
+		$.get(dl.url, self._makeDlHandler(dl, readyFn), "text");
 	}
 	
 };
