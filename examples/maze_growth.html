@@ -1,0 +1,261 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+	<meta charset="utf-8">
+	<title>Lores: Maze Generator - Ondrovo.com</title>
+	<script src="jquery-1.10.1.min.js"></script>
+	<script src="jquery-migrate-1.2.1.min.js"></script>
+	<script src="lores.js"></script>
+	
+<style>
+	html,body{margin: 0; padding: 0; background: #000;}
+
+	#display {
+		margin: 20px auto;
+		width: 640px;
+		height: 640px;
+		box-shadow: 0px 0px 5px 4px cyan;
+		position: relative;
+	}
+	
+	.legend {
+		margin: 20px auto;
+		width: 1020px;
+		color: cyan;
+		font-family: monospace;
+		text-align: center;
+	}
+	
+	#legend a {
+		color: cyan;
+	}
+	
+</style>
+
+<script>
+
+	var disp;
+	var keys;
+	
+	var anim;
+	
+	var abortNextClick = false;
+	
+	var dispmap;
+
+	var ROWS = 128;
+	var COLS = 128;
+	
+	var FPS = 10;
+	
+	var liveCells = [];
+
+	$(document).ready(function(){
+		buildDisplay();
+	});
+	
+	function buildDisplay() {
+		
+		Lores.buildCheckerBackground('#display', COLS, ROWS, "#000", "#111");
+				
+		disp = new LoresDisplay(
+			$('#display'),
+			{
+				cols: COLS,
+				rows: ROWS,
+				colors: {
+					0: "#000",
+					1: "#fff",
+				},
+				bg: -1,
+			}
+		);
+		
+		dispmap = disp.getMap(0); // fill with zeros
+	
+		disp.addColorRule(0, -1); // draw 0 as transparency
+		
+		keys = new LoresKeyboard();
+		
+		keys.setDownHandler( [LKey.ESC, LKey.X], function() {
+			dispmap.erase(true);
+			anim.pause();
+			liveCells.length = 0;
+		});
+		
+		
+		keys.setDownHandler( [LKey.SPACE, LKey.R], function() {
+			anim.toggle();
+		});
+		
+		
+		keys.setDownHandler( [LKey.ENTER, LKey.S], function() {
+			genStep();
+		});
+		
+		
+		keys.setDownHandler( LKey.NUMBERS, function(which) {
+			switch(which) {
+				case LKey.NUM_1: anim.setFps(1); break;
+				case LKey.NUM_2: anim.setFps(2); break;
+				case LKey.NUM_3: anim.setFps(4); break;
+				case LKey.NUM_4: anim.setFps(6); break;
+				case LKey.NUM_5: anim.setFps(8); break;
+				case LKey.NUM_6: anim.setFps(12); break;
+				case LKey.NUM_7: anim.setFps(16); break;
+				case LKey.NUM_8: anim.setFps(24); break;
+				case LKey.NUM_9: anim.setFps(32); break;
+			}
+		});
+		
+		disp.setClickHandler(function(pos, display) {
+		
+			if(abortNextClick) {
+				abortNextClick = false;
+				return;
+			}
+		
+			var p = dispmap.getPixel(pos.x,pos.y);
+			
+			if(p==0) {
+				dispmap.setPixel(pos.x, pos.y, 1);
+				liveCells.push([pos.x, pos.y]);
+			}
+		});
+		
+		
+		anim = new LoresAnimator({
+			frame: genStep,
+			fps: FPS,
+		});
+		
+		anim.start();
+		anim.pause();
+	}
+	
+	var sides = [
+		[-1,-1],
+		[0,-1],
+		[1,-1],
+		[-1,0],
+		[1,0],
+		[-1,1],
+		[0,1],
+		[1,1],
+	];
+	
+	var sidesDirect = [
+		[-1,-1],
+		[-1,1],
+		[1,-1],
+		[1,1],
+	];
+	
+	function genStep() {
+	
+		var w = dispmap.getWidth();
+		var h = dispmap.getHeight();
+		
+		Lores.shuffleArray(liveCells);
+		
+		for(var i = Math.floor( (0.3+Math.random()*0.7)*(liveCells.length-1) ); i>=0; i--) {
+		
+			if(Math.floor(Math.random()*10)==0) {
+				//liveCells.splice(i, 1);
+				continue;
+			}
+			
+			var cell = liveCells[i];
+			
+			var x = cell[0];
+			var y = cell[1];
+			
+			Lores.shuffleArray(sides);
+			
+			for(var q=0; q<sides.length; q++) {
+				var dx = sides[q][0];
+				var dy = sides[q][1];
+					
+				if(dx == 0 && dy == 0) continue; // skip itself
+				if(dx != 0 && dy != 0) continue;
+				
+				var xx = x+dx;
+				var yy = y+dy;
+				
+				if(xx==-1 || xx==w) continue;
+				if(yy==-1 || yy==h) continue;
+				
+				if( dispmap.map[yy][xx] == 1 ) continue;
+				
+				var badNeighbors = 0;
+				for(var ex = -1; ex <= 1; ex++) {
+					for(var ey = -1; ey <= 1; ey++) {
+						if(ex == 0 && ey == 0) continue; // skip itself
+						
+						var exx = x+dx+ex;
+						var eyy = y+dy+ey;
+						
+						if(exx==-1 || exx==w) continue;
+						if(eyy==-1 || eyy==h) continue;
+						
+						if( dispmap.map[eyy][exx] == 1 ) {
+							//decide if it's a problem
+							
+							if(dx == -1 && ex == 1) continue; // ok
+							if(dx == 1 && ex == -1) continue; // ok
+							if(dy == -1 && ey == 1) continue; // ok
+							if(dy == 1 && ey == -1) continue; // ok
+							
+							badNeighbors++;
+						}
+					}
+				}
+				
+				if(badNeighbors==0) {
+					liveCells.push([xx,yy]);
+					dispmap.setPixel(xx, yy, 1);
+				}
+			}
+			
+			liveCells.splice(i, 1);
+			if(Math.floor(Math.random()*10)==0) {
+			
+				var ok = false;
+				for(var r=0; r<sidesDirect.length; r++) {
+					var rx = x+sidesDirect[r][0];
+					var ry = y+sidesDirect[r][1];
+					if(rx==-1 || rx==w) continue;
+					if(ry==-1 || ry==h) continue;
+						
+					if( dispmap.map[ry][rx] == 1 ) {
+						ok = true;
+						break;
+					}
+				}
+				
+				if(ok) dispmap.setPixel(x, y, 0);
+			}
+ 		}
+		
+	}
+
+</script>
+
+</head>
+
+<body>
+
+<div class="legend">
+	Click to set maze start point(s). Press SPACE to run. Adjust speed with number keys.
+</div>
+
+<div id="display">
+</div>
+
+<div class="legend">
+	Erase with ESC | Run one step with ENTER | <a href="/">→ Ondrovo.com</a>
+</div>
+
+<body>
+
+</html>

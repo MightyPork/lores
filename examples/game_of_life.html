@@ -1,0 +1,230 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+	<meta charset="utf-8">
+	<title>Lores: Game Of Life - Ondrovo.com</title>
+	<script src="jquery-1.10.1.min.js"></script>
+	<script src="jquery-migrate-1.2.1.min.js"></script>
+	<script src="lores.js"></script>
+	
+<style>
+	html,body{margin: 0; padding: 0; background: #000;}
+
+	#display {
+		margin: 20px auto;
+		width: 1020px;
+		height: 700px;
+		box-shadow: 0px 0px 5px 4px cyan;
+		position: relative;
+	}
+	
+	#legend {
+		margin: 20px auto;
+		width: 1020px;
+		color: cyan;
+		font-family: monospace;
+	}
+	
+	#legend a {
+		color: cyan;
+	
+	}
+	
+</style>
+
+<script>
+
+	var disp;
+	var keys;
+	
+	var anim;
+	
+	var abortNextClick = false;
+	
+	var dispmap;
+
+	var ROWS = 70;
+	var COLS = 102;
+	
+	var FPS = 10;
+
+	$(document).ready(function(){
+		buildDisplay();
+	});
+
+
+	function buildDisplay() {
+		
+		Lores.buildCheckerBackground('#display', COLS, ROWS, "#000", "#111");
+		
+		disp = new LoresDisplay(
+			$('#display'),
+			{
+				cols: COLS,
+				rows: ROWS,
+				colors: {
+					0: "#000",
+					1: "#fff",
+				},
+				bg: -1,
+			}
+		);
+		
+		dispmap = disp.getMap(0); // fill with zeros
+	
+		disp.addColorRule(0, -1); // draw 0 as transparency
+		
+		keys = new LoresKeyboard();
+		
+		keys.setDownHandler( [LKey.ESC, LKey.X], function() {
+			dispmap.erase(true);
+			anim.pause();
+		});
+		
+		
+		keys.setDownHandler( [LKey.SPACE, LKey.R], function() {
+			anim.toggle();
+		});
+		
+		
+		keys.setDownHandler( [LKey.SPACE, LKey.R], function() {
+			anim.toggle();
+		});
+		
+		
+		keys.setDownHandler( [LKey.ENTER, LKey.S], function() {
+			lifeStep();
+		});
+		
+		
+		keys.setDownHandler( LKey.NUMBERS, function(which) {
+			switch(which) {
+				case LKey.NUM_1: anim.setFps(1); break;
+				case LKey.NUM_2: anim.setFps(2); break;
+				case LKey.NUM_3: anim.setFps(4); break;
+				case LKey.NUM_4: anim.setFps(6); break;
+				case LKey.NUM_5: anim.setFps(8); break;
+				case LKey.NUM_6: anim.setFps(12); break;
+				case LKey.NUM_7: anim.setFps(16); break;
+				case LKey.NUM_8: anim.setFps(24); break;
+				case LKey.NUM_9: anim.setFps(32); break;
+			}
+		});
+		
+		disp.setMoveHandler(function(to, from, display) {
+			if(!display.isMouseDown()) return;
+			if(from.outside || to.outside) return;
+			
+			var color = 1;
+			
+			if(keys.isDown(46)) color = 0;
+			
+			dispmap.setPixel(from.x, from.y, color);
+			dispmap.setPixel(to.x, to.y, color);
+			
+			abortNextClick = true;
+		});
+		
+		disp.setClickHandler(function(pos, display) {
+		
+			if(abortNextClick) {
+				abortNextClick = false;
+				return;
+			}
+		
+			var p = dispmap.getPixel(pos.x,pos.y);
+			p = p & 1;
+			p = 1 - p;
+		
+			dispmap.setPixel(pos.x, pos.y, p);
+		});
+		
+		
+		anim = new LoresAnimator({
+			frame: lifeStep,
+			fps: FPS,
+		});
+		
+		anim.start();
+		anim.pause();
+	}
+	
+	function lifeStep() {
+	
+		var w = dispmap.getWidth();
+		var h = dispmap.getHeight();
+		
+		dispmap.autoFlush(false);
+		
+		dispmap.walk(function(x,y,self) {
+			var neighb = 0;
+			
+			// go through neighbours
+			for(var dx = -1; dx <= 1; dx++) {
+				for(var dy = -1; dy <= 1; dy++) {
+					
+					if(dx == 0 && dy == 0) continue; // skip itself
+					
+					var xx = x+dx;
+					var yy = y+dy;
+					
+					// wrap
+					if(xx==-1) {
+						xx = w-1;
+					} else if(xx==w) {
+						xx = 0;
+					}
+					
+					if(yy==-1) {
+						yy=h-1;
+					} else if(yy==h) {
+						yy=0;
+					}
+					
+					if( (self.map[yy][xx] & 0xF) != 0 ) neighb++;
+				}
+			}
+			
+			var cc = self.map[y][x];
+			
+			var on = (cc & 0x0F) != 0;
+
+			if(on) {
+				if(neighb > 3 || neighb < 2) {
+					dispmap.setPixel(x, y, cc & 0x0F); //die
+				} else {
+					dispmap.setPixel(x, y, cc | 0x10); //live
+				}
+			}
+			
+			if(!on && (neighb == 3)) {
+				dispmap.setPixel(x, y, cc | 0x10); //live
+			}
+		});
+		
+		dispmap.autoFlush(true);
+		
+		// convert numbers to 0's and 1's, flush
+		dispmap.walk(function(x,y,self) {
+			var on = ( (self.map[y][x] & 0xF0) != 0 );
+			dispmap.setPixel( x, y, on ? 1 : 0 );
+		});
+		
+	}
+
+</script>
+
+</head>
+
+<body>
+
+<div id="display" class="display-wrap">
+</div>
+
+<div id="legend">
+	Erase: ESC or X | Run: SPACE or R | Step: ENTER or S | Speed: keys 1-9 | Draw cells with mouse. Hold DELETE to erase cells. | <a href="/">→ Ondrovo.com</a>
+</div>
+
+<body>
+
+</html>

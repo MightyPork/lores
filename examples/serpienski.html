@@ -1,0 +1,116 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+	<meta charset="utf-8">
+	<title>Lores: Maze Generator - Ondrovo.com</title>
+	<script src="jquery-1.10.1.min.js"></script>
+	<script src="jquery-migrate-1.2.1.min.js"></script>
+	<script src="lores.js"></script>
+	
+<style>
+	html,body{margin: 0; padding: 0; background: #000;}
+
+	#display {
+		margin: 20px auto;
+		width: 640px;
+		height: 640px;
+		box-shadow: 0px 0px 5px 4px cyan;
+		position: relative;
+		background: black;
+	}
+	
+	#legend {
+		margin: 20px auto;
+		width: 1020px;
+		color: cyan;
+		font-family: monospace;
+		text-align: center;
+	}
+	
+	#legend a {
+		color: cyan;
+	}
+	
+</style>
+
+<script>
+
+	var disp;
+	var keys;
+	
+	var anim;
+	
+	var dispmap;
+
+	var ROWS = 128;
+	var COLS = 128;
+	
+	var FPS = 1;
+	
+	var liveCells = [];
+
+	$(document).ready(function(){
+		buildDisplay();
+	});
+	
+	function buildDisplay() {
+		
+		//LoresUtils.buildCheckerBackground('#display', COLS, ROWS, "#000", "#111");
+				
+		disp = new LoresDisplay(
+			$('#display'),
+			{
+				cols: COLS,
+				rows: ROWS,
+				colors: {
+					0: "#000",
+					1: "#0f0",
+				},
+				bg: -1,
+			}
+		);
+		
+		disp.fill(1);
+		
+		disp.addColorRule(0,-1);
+		
+		anim = new LoresAnimator({
+			frame: genStep,
+			fps: FPS,
+		});
+		
+		anim.start();
+	}
+
+	var size = COLS/2;
+	
+	function genStep() {
+		for(var y=0; y<COLS; y+=size*2) {
+			for(var x=0; x<COLS; x+=size*2) {
+					
+				disp.fillRect(x,y,size,size,0);
+			}
+		}
+		
+		console.log(size);
+		
+		if(size == 1) anim.stop();
+		size /= 2;
+	}
+
+</script>
+
+</head>
+
+<body>
+
+<div id="display" class="display-wrap">
+</div>
+
+<div id="legend">
+	Triangle gen, non-interactive. | <a href="/">→ Ondrovo.com</a>
+</div>
+
+<body>
+
+</html>

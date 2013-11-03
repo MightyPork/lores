@@ -1,0 +1,155 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+	<meta charset="utf-8">
+	<title>Lores Test</title>
+	<script src="jquery-1.10.1.min.js"></script>
+	<script src="jquery-migrate-1.2.1.min.js"></script>
+	<script src="lores.js"></script>
+
+	<style>
+		html,body{margin: 0; padding: 0; background: #eee;}
+
+		#display {
+			margin: 10px auto;
+			width: 512px;
+			height: 512px;
+			padding: 0;
+			position: relative;
+		}
+
+		#display div {
+			position: absolute;
+			left: 0; top: 0;
+			width: 100%;
+			height: 100%;
+			padding: 0;
+			margin: 0;
+		}
+	</style>
+
+<script>
+
+	var disp;
+	var anim;
+	var keys;
+	
+	var spriteMap;
+	var spritePool;
+	
+	var spriteAlien;
+	var spriteFlower;
+
+	var ROWS = 32;
+	var COLS = 32;
+	var FPS = 40;
+
+	$(document).ready(function(){
+		rebuildDisplay();
+	});
+
+
+	function rebuildDisplay() {
+		
+		disp = new LoresDisplay(
+			'#scene',
+			{
+				cols: COLS,
+				rows: ROWS,
+				colors: {
+					1: "lime",
+					2: "red",
+					3: "white",
+					4: "yellow",
+				},
+				bg: 'black',
+			}
+		);
+
+		anim = new LoresAnimator({
+			init: animInit,
+			frame: animFrame,
+			fps: FPS,
+		});
+		
+		keys = new LoresKeyboard();
+		
+		anim.start();
+		
+		
+		spriteMap = disp.getMap();
+		spriteMap.autoFlush(false);
+
+		var alienPm = LoresPixmap.fromString(
+			"   # #   ," + 
+			"  #####  ," + 
+			"  # # #  ," + 
+			" ####### ," + 
+			"## # # ##,",
+			
+			{'#': 1, 'x': 2}
+		);
+		
+		var flowerPm = LoresPixmap.fromString( 
+			" oo ," + 
+			"oCCo," + 
+			"oCCo," + 
+			" oo ,",
+			
+			{'o': 4, 'C': 3}
+		);
+		
+		spritePool = new LoresSpritePool(spriteMap);
+		
+		spriteAlien = new LoresSprite({ map: alienPm, x: 10, y: 10, z: 0 });
+		spriteFlower = new LoresSprite({ map: flowerPm, x: 18, y: 15, z: 1 });
+		
+		spritePool.addSprite(spriteAlien);
+		spritePool.addSprite(spriteFlower);
+	}
+
+
+	function animInit() {
+		
+		keys.setDownHandler(function(key) {
+			switch(key) {
+				case LKey.LEFT: spriteAlien.scheduleMove(-1, 0); break;
+				case LKey.RIGHT: spriteAlien.scheduleMove(1, 0); break;
+				case LKey.UP: spriteAlien.scheduleMove(0, -1); break;
+				case LKey.DOWN: spriteAlien.scheduleMove(0, 1); break;
+				case LKey.SPACE:
+					console.log(
+						"-- collision check --\n" +
+						" * RECT: " + (spriteAlien.collidesWith(spriteFlower)?"true":"false") + "\n" + 
+						" * PIXELS: " + (spriteAlien.collidesWith(spriteFlower, true)?"true":"false") + "\n"
+					);
+					break;
+			}
+			
+		});
+		
+	}
+
+	
+	function animFrame(time) {
+		spritePool.eraseOnMap(true);
+		spritePool.moveSprites();
+		spritePool.drawOnMap(true);
+		spriteMap.flush();
+	}
+
+</script>
+
+
+
+</head>
+
+<body>
+
+	<div id="display">
+		<div id="scene"></div>
+	</div>
+
+<body>
+
+</html>
